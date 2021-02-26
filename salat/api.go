@@ -22,33 +22,48 @@ func init() {
 	client = &http.Client{Timeout: 10 * time.Second, Transport: tr}
 }
 
-//GetPrayerTimes -
-func GetPrayerTimes(coords Coordinates, date time.Time) (PrayerTimes, error) {
+type request struct {
+	coords Coordinates
+	date   time.Time
+}
+
+func (r request) buildRequest() (*http.Request, error) {
 	req, err := http.NewRequest("GET", APIURL, nil)
 	if err != nil {
-		return PrayerTimes{}, err
+		return nil, err
 	}
 
 	q := req.URL.Query()
-	q.Add("latitude", fmt.Sprintf("%f", coords.Latitude))
-	q.Add("longitude", fmt.Sprintf("%f", coords.Longitude))
+	q.Add("latitude", fmt.Sprintf("%f", r.coords.Latitude))
+	q.Add("longitude", fmt.Sprintf("%f", r.coords.Longitude))
 	q.Add("method", "02")
-
-	q.Add("month", strconv.Itoa(int(date.Month())))
-	q.Add("year", strconv.Itoa(int(date.Year())))
+	q.Add("month", strconv.Itoa(int(r.date.Month())))
+	q.Add("year", strconv.Itoa(int(r.date.Year())))
 	req.URL.RawQuery = q.Encode()
+
+	return req, nil
+}
+
+func (r request) getTimings() (*prayerTimingsData, error) {
+	req, _ := r.buildRequest()
 	resp, err := client.Do(req)
 	if err != nil {
-		return PrayerTimes{}, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return PrayerTimes{}, errors.New("api error")
+		return nil, errors.New("api error")
 	}
 	var data prayerAPIResponse
 	json.NewDecoder(resp.Body).Decode(&data)
-	var timings = data.Data[date.Day()-1].Timings
+	return &data.Data[r.date.Day()-1].Timings, nil
+}
+
+//GetPrayerTimes -
+func GetPrayerTimes(coords Coordinates, date time.Time) (PrayerTimes, error) {
+	r := request{coords: coords, date: date}
+	timings, _ := r.getTimings()
 
 	const layout = "15:04 (MST)"
 	fajrTime, _ := time.Parse(layout, timings.Fajr)

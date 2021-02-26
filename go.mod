@@ -1,3 +1,3 @@
-module github.com/salah93/adhan-go
+module github.com/salah93/adhango
 
 go 1.15

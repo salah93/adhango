@@ -1,3 +1,10 @@
+/*
+TODO:
+	1. cron object
+	2. parse all cron entries
+	3. identify by comment, command
+	4. remove entries by comment
+*/
 package main
 
 import (

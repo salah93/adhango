@@ -42,7 +42,7 @@ func main() {
 			adhanFile = "/home/salah/Projects/adhan-pi/static/azan2.mp3"
 		}
 
-		f.WriteString(fmt.Sprintf("\n%d %d * * * XDG_RUNTIME_DIR=/run/user/%d /usr/bin/ffplay -nodisp %s > /dev/null 2>&1", prayer.Minute, prayer.Hour, userID, adhanFile))
+		f.WriteString(fmt.Sprintf("%d %d * * * XDG_RUNTIME_DIR=/run/user/%d /usr/bin/ffplay -nodisp %s > /dev/null 2>&1\n", prayer.Minute, prayer.Hour, userID, adhanFile))
 	}
 	f.Sync()
 

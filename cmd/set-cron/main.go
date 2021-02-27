@@ -1,17 +1,9 @@
-/*
-TODO:
-	1. cron object
-	2. parse all cron entries
-	3. identify by comment, command
-	4. remove entries by comment
-*/
 package main
 
 import (
 	"fmt"
 	"github.com/salah93/adhango/salat"
-	"io/ioutil"
-	"os"
+	"github.com/salah93/go-cron"
 	"os/exec"
 	"os/user"
 	"strconv"
@@ -24,23 +16,13 @@ func main() {
 	u, _ := user.Current()
 	userID, _ := strconv.Atoi(u.Uid)
 
+	const identifyingComment = "go-adhan"
 	today := time.Now()
 	coords := salat.Coordinates{Latitude: 40.730610, Longitude: -73.935242}
 	prayertimes, _ := salat.GetPrayerTimes(coords, today)
 
-	f, err := ioutil.TempFile("", "*")
-	if err != nil {
-		panic(err)
-	}
-	defer os.Remove(f.Name())
-	defer f.Close()
-
-	oldCronJobs, err := exec.Command(croncmd, "-l").Output()
-	if err != nil {
-		panic(err)
-	}
-	f.Write(oldCronJobs)
-
+	job := cron.NewJob()
+	job.RemoveItemsByComment(identifyingComment)
 	for index, prayer := range prayertimes {
 		var adhanFile string
 		if index == salat.FAJR {
@@ -48,14 +30,21 @@ func main() {
 		} else {
 			adhanFile = "/home/salah/Projects/adhan-pi/static/azan2.mp3"
 		}
-
-		f.WriteString(fmt.Sprintf("%d %d * * * XDG_RUNTIME_DIR=/run/user/%d /usr/bin/ffplay -nodisp %s > /dev/null 2>&1\n", prayer.Minute, prayer.Hour, userID, adhanFile))
+		cmd := exec.Command("/usr/bin/ffplay", "-nodisp", adhanFile)
+		cmd.Env = append(cmd.Env, fmt.Sprintf("XDG_RUNTIME_DIR=/run/user/%d", userID))
+		job.AddItem(
+			&cron.Item{
+				Command: cmd,
+				Comment: identifyingComment,
+				Time: &cron.ItemTime{
+					Minute:     strconv.Itoa(prayer.Minute),
+					Hour:       strconv.Itoa(prayer.Hour),
+					DayOfMonth: "*",
+					Month:      "*",
+					WeekDay:    "*",
+				},
+			},
+		)
 	}
-	f.Sync()
-
-	cmd := exec.Command(croncmd, f.Name())
-	err = cmd.Run()
-	if err != nil {
-		panic(err)
-	}
+	job.Save()
 }

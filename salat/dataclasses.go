@@ -37,7 +37,7 @@ type prayerTimingsData struct {
 }
 
 type prayerAPIData struct {
-	Timings prayerTimingsData
+	Timings *prayerTimingsData
 	Date    interface{} `json:"-"`
 	Meta    interface{} `json:"-"`
 }
